@@ -7,7 +7,7 @@
     <!-- Favicon: Solid Psi Trident -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path fill='%238B5CF6' d='M50 5 C30 5 15 25 15 45 L15 95 L25 95 L25 45 C25 30 35 15 50 15 C65 15 75 30 75 45 L75 95 L85 95 L85 45 C85 25 70 5 50 5 Z M45 15 L55 15 L55 95 L45 95 Z'/></svg>">
     
-    <!-- Firebase Compat SDKs (Browser-ready, no npm) -->
+    <!-- Firebase Compat SDKs (Required for GitHub Pages / No-Build Setup) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -15,7 +15,8 @@
 
     <style>
         /* =========================================
-           CORTEX THEME ENGINE (White/Purple & Black/Purple)
+           CORTEX THEME ENGINE
+           Light: White/Purple | Dark: Black/Purple
            ========================================= */
         :root {
             --bg-primary: #FFFFFF;
@@ -46,7 +47,7 @@
         * { box-sizing: border-box; margin: 0; padding: 0; transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; }
         body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; display: flex; flex-direction: column; }
 
-        /* LOGIN SCREEN */
+        /* LOGIN SCREEN (Polaris Setup Style) */
         #login-screen {
             position: fixed; inset: 0; z-index: 100;
             background: var(--bg-primary);
@@ -90,11 +91,15 @@
         .header-text h1 { font-size: 1.25rem; line-height: 1; }
         .header-text span { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent); }
 
-        .theme-toggle {
+        .header-actions { display: flex; gap: 0.5rem; align-items: center; }
+        .theme-toggle, .logout-btn {
             background: var(--bg-primary); border: 1px solid var(--border); color: var(--text-secondary);
             padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem;
         }
-        .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+        .theme-toggle:hover, .logout-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .logout-btn { color: #EF4444; border-color: #EF4444; }
+        .logout-btn:hover { background: #FEF2F2; }
+        [data-theme="dark"] .logout-btn:hover { background: #450a0a; }
 
         main { flex: 1; padding: 2rem; max-width: 1200px; margin: 0 auto; width: 100%; }
 
@@ -136,15 +141,14 @@
         }
         .data-item h4 { font-size: 0.95rem; margin-bottom: 0.2rem; }
         .data-item small { color: var(--text-secondary); font-size: 0.8rem; }
-        .status-badge {
-            padding: 0.2rem 0.6rem; border-radius: 99px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
-        }
+        
+        .status-badge { padding: 0.2rem 0.6rem; border-radius: 99px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
         .status-pending { background: #FEF3C7; color: #92400E; }
-        .status-progress { background: #DBEAFE; color: #1E40AF; }
+        .status-inprogress { background: #DBEAFE; color: #1E40AF; }
         .status-done { background: #D1FAE5; color: #065F46; }
         .status-canceled { background: #FEE2E2; color: #991B1B; }
         [data-theme="dark"] .status-pending { background: #78350F; color: #FEF3C7; }
-        [data-theme="dark"] .status-progress { background: #1E3A5F; color: #DBEAFE; }
+        [data-theme="dark"] .status-inprogress { background: #1E3A5F; color: #DBEAFE; }
         [data-theme="dark"] .status-done { background: #064E3B; color: #D1FAE5; }
         [data-theme="dark"] .status-canceled { background: #7F1D1D; color: #FEE2E2; }
 
@@ -153,7 +157,7 @@
         /* FILE UPLOAD */
         .upload-zone {
             border: 2px dashed var(--border); border-radius: 12px; padding: 2rem; text-align: center;
-            cursor: pointer; transition: all 0.3s ease; margin-bottom: 1.5rem;
+            cursor: pointer; transition: all 0.3s ease; margin-bottom: 1.5rem; display: block;
         }
         .upload-zone:hover { border-color: var(--accent); background: var(--glow); }
         .upload-zone input { display: none; }
@@ -171,6 +175,7 @@
     <!-- ==================== LOGIN SCREEN ==================== -->
     <div id="login-screen">
         <div class="login-card">
+            <!-- Layered Psi Logo -->
             <svg class="logo-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                 <path d="M50 8 C32 8 18 26 18 44 L18 92 L28 92 L28 44 C28 30 37 18 50 18 C63 18 72 30 72 44 L72 92 L82 92 L82 44 C82 26 68 8 50 8 Z" opacity="0.4"/>
                 <path d="M45 18 L55 18 L55 92 L45 92 Z"/>
@@ -202,8 +207,8 @@
                     <span>PsyCore Systems • Powered by LMD Legacy</span>
                 </div>
             </div>
-            <div style="display:flex;gap:0.5rem;align-items:center;">
-                <button class="theme-toggle" id="logout-btn" style="color:#EF4444;border-color:#EF4444;">Logout</button>
+            <div class="header-actions">
+                <button class="logout-btn" id="logout-btn">Logout</button>
                 <button class="theme-toggle" id="theme-btn">◑ Theme</button>
             </div>
         </header>
@@ -274,7 +279,6 @@
                 <div class="back-btn" onclick="Cortex.nav('dashboard')">← Back to Dashboard</div>
                 <h2 class="module-header">File Repository</h2>
                 <p class="module-desc">Secure document storage with upload/download capabilities.</p>
-                
                 <label class="upload-zone" id="upload-zone">
                     <div style="font-size:2rem;margin-bottom:0.5rem;">📤</div>
                     <div style="font-weight:600;">Click or drag files to upload</div>
@@ -318,13 +322,11 @@
             appId: "1:190343256759:web:0feb3d20ae837988920b32"
         };
 
-        // Initialize Firebase
+        // Initialize Firebase (Compat SDK for no-build GitHub Pages hosting)
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
         const storage = firebase.storage();
-
-        console.log("✅ Cortex connected to Firebase:", firebaseConfig.projectId);
 
         // =========================================
         // CORTEX APPLICATION LOGIC
@@ -358,8 +360,8 @@
                     try {
                         await auth.signInWithEmailAndPassword(email, pass);
                     } catch (err) {
-                        errEl.textContent = err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' 
-                            ? 'Invalid credentials. Access denied.' 
+                        errEl.textContent = (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential')
+                            ? 'Invalid credentials. Access denied.'
                             : err.message;
                         btn.disabled = false;
                         btn.textContent = 'Access System';
@@ -374,7 +376,7 @@
                         this.currentUser = user;
                         document.getElementById('login-screen').style.display = 'none';
                         document.getElementById('app-container').style.display = 'flex';
-                        
+
                         if (user.email === this.MASTER_EMAIL) {
                             document.getElementById('admin-widget').style.display = 'block';
                             document.getElementById('admin-indicator').innerHTML = '<span class="admin-badge">ADMIN</span>';
@@ -382,19 +384,25 @@
                             document.getElementById('admin-widget').style.display = 'none';
                             document.getElementById('admin-indicator').innerHTML = '';
                         }
-                        
+
                         this.loadAllData();
                     } else {
                         document.getElementById('login-screen').style.display = 'flex';
                         document.getElementById('app-container').style.display = 'none';
                         btn.disabled = false;
                         btn.textContent = 'Access System';
+                        document.getElementById('password').value = '';
                     }
                 });
             },
 
             bindLogout() {
-                document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
+                document.getElementById('logout-btn').addEventListener('click', () => {
+                    // Clean up listeners on logout
+                    Object.values(this.listeners).forEach(unsub => unsub());
+                    this.listeners = {};
+                    auth.signOut();
+                });
             },
 
             // --- NAVIGATION ---
@@ -430,114 +438,81 @@
             },
 
             listenToRef(path, containerId, renderFn) {
-                // Clean up previous listener
                 if (this.listeners[path]) this.listeners[path]();
-                
                 const ref = db.ref(path);
                 const handler = ref.on('value', snapshot => {
-                    const data = snapshot.val();
-                    renderFn(containerId, data);
+                    renderFn(containerId, snapshot.val());
                 });
                 this.listeners[path] = () => ref.off('value', handler);
             },
 
-            renderProjects(containerId, data) {
-                const container = document.getElementById(containerId);
-                if (!data) { container.innerHTML = '<div class="empty-state">No projects yet. Add via Admin Panel.</div>'; return; }
-                
-                const items = Object.entries(data).map(([id, p]) => `
+            renderProjects(id, data) {
+                const el = document.getElementById(id);
+                if (!data) { el.innerHTML = '<div class="empty-state">No projects yet.</div>'; return; }
+                el.innerHTML = Object.entries(data).map(([k, p]) => `
                     <div class="data-item">
-                        <div>
-                            <h4>${this.escapeHtml(p.title || 'Untitled Project')}</h4>
-                            <small>Assigned: ${this.escapeHtml(p.assignee || 'Unassigned')} • Updated: ${p.updatedAt || 'N/A'}</small>
-                        </div>
-                        <span class="status-badge status-${(p.status || 'pending').toLowerCase().replace(' ', '')}">${this.escapeHtml(p.status || 'Pending')}</span>
-                    </div>
-                `).join('');
-                container.innerHTML = items;
+                        <div><h4>${this.esc(p.title)}</h4><small>Assigned: ${this.esc(p.assignee || 'Unassigned')}</small></div>
+                        <span class="status-badge status-${(p.status||'pending').toLowerCase().replace(/\s/g,'')}">${this.esc(p.status||'Pending')}</span>
+                    </div>`).join('');
             },
 
-            renderEvents(containerId, data) {
-                const container = document.getElementById(containerId);
-                if (!data) { container.innerHTML = '<div class="empty-state">No events scheduled.</div>'; return; }
-                
-                const items = Object.entries(data)
-                    .sort((a, b) => (a[1].date || '').localeCompare(b[1].date || ''))
-                    .map(([id, e]) => `
+            renderEvents(id, data) {
+                const el = document.getElementById(id);
+                if (!data) { el.innerHTML = '<div class="empty-state">No events scheduled.</div>'; return; }
+                el.innerHTML = Object.entries(data)
+                    .sort((a,b) => (a[1].date||'').localeCompare(b[1].date||''))
+                    .map(([k, e]) => `
                     <div class="data-item">
-                        <div>
-                            <h4>${this.escapeHtml(e.title || 'Untitled Event')}</h4>
-                            <small>📅 ${this.escapeHtml(e.date || 'No date')} • 📍 ${this.escapeHtml(e.location || 'TBD')}</small>
-                        </div>
-                    </div>
-                `).join('');
-                container.innerHTML = items;
+                        <div><h4>${this.esc(e.title)}</h4><small>📅 ${this.esc(e.date||'TBD')} • 📍 ${this.esc(e.location||'TBD')}</small></div>
+                    </div>`).join('');
             },
 
-            renderMembers(containerId, data) {
-                const container = document.getElementById(containerId);
-                if (!data) { container.innerHTML = '<div class="empty-state">No members registered.</div>'; return; }
-                
-                const items = Object.entries(data).map(([id, m]) => `
+            renderMembers(id, data) {
+                const el = document.getElementById(id);
+                if (!data) { el.innerHTML = '<div class="empty-state">No members registered.</div>'; return; }
+                el.innerHTML = Object.entries(data).map(([k, m]) => `
                     <div class="data-item">
-                        <div>
-                            <h4>${this.escapeHtml(m.name || 'Unknown')}</h4>
-                            <small>Position: ${this.escapeHtml(m.position || 'Member')} • ${this.escapeHtml(m.email || '')}</small>
-                        </div>
-                    </div>
-                `).join('');
-                container.innerHTML = items;
+                        <div><h4>${this.esc(m.name)}</h4><small>${this.esc(m.position||'Member')} • ${this.esc(m.email||'')}</small></div>
+                    </div>`).join('');
             },
 
-            renderNotes(containerId, data) {
-                const container = document.getElementById(containerId);
-                if (!data) { container.innerHTML = '<div class="empty-state">No activity notes yet.</div>'; return; }
-                
-                const items = Object.entries(data)
-                    .sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0))
+            renderNotes(id, data) {
+                const el = document.getElementById(id);
+                if (!data) { el.innerHTML = '<div class="empty-state">No activity notes yet.</div>'; return; }
+                el.innerHTML = Object.entries(data)
+                    .sort((a,b) => (b[1].timestamp||0) - (a[1].timestamp||0))
                     .slice(0, 20)
-                    .map(([id, n]) => `
+                    .map(([k, n]) => `
                     <div class="data-item" style="flex-direction:column;align-items:flex-start;gap:0.3rem;">
                         <div style="display:flex;justify-content:space-between;width:100%;">
-                            <h4>${this.escapeHtml(n.author || 'Anonymous')}</h4>
-                            <small>${new Date(n.timestamp || Date.now()).toLocaleString()}</small>
+                            <h4>${this.esc(n.author)}</h4>
+                            <small>${new Date(n.timestamp||Date.now()).toLocaleString()}</small>
                         </div>
-                        <small style="color:var(--text-primary);line-height:1.4;">${this.escapeHtml(n.content || '')}</small>
-                    </div>
-                `).join('');
-                container.innerHTML = items;
+                        <small style="color:var(--text-primary);line-height:1.4;">${this.esc(n.content)}</small>
+                    </div>`).join('');
             },
 
-            renderFiles(containerId, data) {
-                const container = document.getElementById(containerId);
-                if (!data) { container.innerHTML = '<div class="empty-state">No files uploaded yet.</div>'; return; }
-                
-                const items = Object.entries(data)
-                    .sort((a, b) => (b[1].uploadedAt || 0) - (a[1].uploadedAt || 0))
-                    .map(([id, f]) => `
+            renderFiles(id, data) {
+                const el = document.getElementById(id);
+                if (!data) { el.innerHTML = '<div class="empty-state">No files uploaded yet.</div>'; return; }
+                el.innerHTML = Object.entries(data)
+                    .sort((a,b) => (b[1].uploadedAt||0) - (a[1].uploadedAt||0))
+                    .map(([k, f]) => `
                     <div class="data-item">
-                        <div>
-                            <h4>📎 ${this.escapeHtml(f.name || 'Unknown File')}</h4>
-                            <small>By: ${this.escapeHtml(f.uploadedBy || 'Unknown')} • ${(f.size / 1024).toFixed(1)} KB</small>
-                        </div>
+                        <div><h4>📎 ${this.esc(f.name)}</h4><small>${(f.size/1024).toFixed(1)} KB • ${this.esc(f.uploadedBy)}</small></div>
                         <a href="${f.url}" target="_blank" rel="noopener" 
-                           style="padding:0.4rem 0.8rem;background:var(--accent);color:white;border-radius:6px;text-decoration:none;font-size:0.8rem;font-weight:600;">
-                            Download
-                        </a>
-                    </div>
-                `).join('');
-                container.innerHTML = items;
+                           style="padding:0.4rem 0.8rem;background:var(--accent);color:white;border-radius:6px;text-decoration:none;font-size:0.8rem;font-weight:600;">Download</a>
+                    </div>`).join('');
             },
 
             // --- FILE UPLOAD ---
             bindFileUpload() {
                 const zone = document.getElementById('upload-zone');
                 const input = document.getElementById('file-input');
-
                 zone.addEventListener('click', () => input.click());
-                zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.style.borderColor = 'var(--accent)'; });
+                zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor = 'var(--accent)'; });
                 zone.addEventListener('dragleave', () => { zone.style.borderColor = 'var(--border)'; });
-                zone.addEventListener('drop', (e) => {
+                zone.addEventListener('drop', e => {
                     e.preventDefault();
                     zone.style.borderColor = 'var(--border)';
                     if (e.dataTransfer.files.length) this.uploadFiles(e.dataTransfer.files);
@@ -554,31 +529,25 @@
                         const ref = storage.ref(`org-files/${Date.now()}_${file.name}`);
                         await ref.put(file);
                         const url = await ref.getDownloadURL();
-                        
                         await db.ref('files').push({
-                            name: file.name,
-                            size: file.size,
-                            url: url,
-                            uploadedBy: this.currentUser?.displayName || this.currentUser?.email || 'Unknown',
+                            name: file.name, size: file.size, url,
+                            uploadedBy: this.currentUser?.displayName || this.currentUser?.email,
                             uploadedAt: Date.now()
                         });
                     } catch (err) {
-                        console.error('Upload failed:', file.name, err);
-                        alert(`Failed to upload ${file.name}: ${err.message}`);
+                        alert(`Upload failed: ${file.name} - ${err.message}`);
                     }
                 }
             },
 
-            // --- UTILITY ---
-            escapeHtml(str) {
+            esc(str) {
                 if (!str) return '';
-                const div = document.createElement('div');
-                div.textContent = str;
-                return div.innerHTML;
+                const d = document.createElement('div');
+                d.textContent = str;
+                return d.innerHTML;
             }
         };
 
-        // Start Application
         document.addEventListener('DOMContentLoaded', () => Cortex.init());
     </script>
 </body>
