@@ -122,7 +122,7 @@
                     <div class="widget" onclick="Cortex.nav('members')"><div class="widget-icon">👥</div><h3>Member Directory</h3><p>Editable roster with positions and profile images.</p></div>
                     <div class="widget" onclick="Cortex.nav('documents')"><div class="widget-icon">📁</div><h3>File Repository</h3><p>Upload, download, and categorize org assets.</p></div>
                     <div class="widget" onclick="Cortex.nav('notes')"><div class="widget-icon">💬</div><h3>Activity & Notes</h3><p>Centralized communication feed for all modules.</p></div>
-                    <div class="widget" id="admin-widget" style="display:none;" onclick="Cortex.nav('admin')"><div class="widget-icon">⚙️</div><h3>PsychSoc Admin Panel</h3><p>User management, system config, legacy settings.</p></div>
+                    <div class="widget" id="admin-widget" style="display:none;" onclick="Cortex.nav('admin')"><div class="widget-icon">⚙️</div><h3>Super Admin Panel</h3><p>User management, system config, legacy settings.</p></div>
                 </div>
             </div>
 
@@ -174,21 +174,25 @@
             <!-- ADMIN PANEL -->
             <div id="admin" class="module-view">
                 <div class="back-btn" onclick="Cortex.nav('dashboard')">← Back to Dashboard</div>
-                <h2 class="module-header">⚙️ PsychSoc Admin Panel</h2>
-                <p class="module-desc">System configuration, user management, and legacy settings.</p>
+                <h2 class="module-header">⚙️ Super Admin Panel</h2>
+                <p class="module-desc">Full system control. Accessible by PsychSoc and Klyde only.</p>
                 <div class="data-list">
                     <div class="data-item" style="flex-direction:column;align-items:flex-start;gap:1rem;">
                         <h4>Add New User</h4>
                         <div style="display:flex;gap:0.5rem;width:100%;flex-wrap:wrap;">
-                            <input type="email" id="new-user-email" placeholder="Email" style="flex:1;min-width:200px;margin:0;">
+                            <input type="email" id="new-user-email" placeholder="New User Email" style="flex:1;min-width:200px;margin:0;">
                             <input type="password" id="new-user-pass" placeholder="Temp Password" style="flex:1;min-width:200px;margin:0;">
                             <button class="btn-primary" style="width:auto;padding:0.85rem 1.5rem;" onclick="Cortex.adminAddUser()">Create User</button>
                         </div>
-                        <small style="color:var(--text-secondary);">Only PsychSoc can create new accounts. Users can change passwords after login.</small>
+                        <small style="color:var(--text-secondary);">Creates a new authenticated user in Firebase.</small>
                     </div>
                     <div class="data-item">
                         <div><h4>System Status</h4><small>Firebase RTDB + Storage Active</small></div>
                         <span style="color:#22c55e;font-weight:700;">● ONLINE</span>
+                    </div>
+                    <div class="data-item">
+                        <div><h4>Current Session</h4><small id="current-admin-email">Checking...</small></div>
+                        <span class="admin-badge">SUPER ADMIN</span>
                     </div>
                 </div>
             </div>
@@ -213,9 +217,9 @@
         const storage = firebase.storage();
 
         const Cortex = {
-            // 🔧 FIX: Changed to check displayName OR email for admin access
-            // This ensures admin works regardless of which email was used in Firebase Console
-            MASTER_IDENTIFIER: 'PsychSoc', 
+            // ✅ UPDATED: Dual Super Admin List
+            SUPER_ADMINS: ['psychsoc@cortex.local', 'klyde@cortex.admin'],
+            
             currentUser: null,
             listeners: {},
 
@@ -252,14 +256,13 @@
                         document.getElementById('login-screen').style.display = 'none';
                         document.getElementById('app-container').style.display = 'flex';
                         
-                        // 🔧 ROBUST ADMIN CHECK: Matches email OR displayName
-                        const isAdmin = user.email === 'psychsoc@cortex.local' || 
-                                        user.displayName === this.MASTER_IDENTIFIER ||
-                                        user.email.toLowerCase().includes('psychsoc');
+                        // ✅ ROBUST DUAL ADMIN CHECK
+                        const isAdmin = this.SUPER_ADMINS.includes(user.email.toLowerCase());
                         
                         if (isAdmin) {
                             document.getElementById('admin-widget').style.display = 'block';
-                            document.getElementById('admin-indicator').innerHTML = '<span class="admin-badge">ADMIN</span>';
+                            document.getElementById('admin-indicator').innerHTML = '<span class="admin-badge">SUPER ADMIN</span>';
+                            document.getElementById('current-admin-email').textContent = user.email;
                         } else {
                             document.getElementById('admin-widget').style.display = 'none';
                             document.getElementById('admin-indicator').innerHTML = '';
@@ -317,7 +320,7 @@
 
             renderProjects(id, data) {
                 const el = document.getElementById(id);
-                if (!data) { el.innerHTML = '<div class="empty-state">No projects yet. Add via Admin Panel or Firebase Console.</div>'; return; }
+                if (!data) { el.innerHTML = '<div class="empty-state">No projects yet.</div>'; return; }
                 el.innerHTML = Object.entries(data).map(([k, p]) => `
                     <div class="data-item">
                         <div><h4>${this.esc(p.title)}</h4><small>Assignee: ${this.esc(p.assignee||'Unassigned')} • Priority: ${this.esc(p.priority||'Normal')}</small></div>
@@ -384,29 +387,24 @@
                 }
             },
 
-            // 🔧 ADMIN FUNCTIONALITY: Create new users directly from panel
             async adminAddUser() {
                 const email = document.getElementById('new-user-email').value.trim();
                 const pass = document.getElementById('new-user-pass').value;
                 if (!email || !pass) return alert('Email and password required');
                 
-                // Note: Client-side user creation requires Firebase Admin SDK or Cloud Functions.
-                // For Polaris-style simplicity, we use Auth.createUserWithEmailAndPassword 
-                // which works if the current user has permission (or in test mode).
-                // For production, this should be moved to a Cloud Function.
+                // Note: Client-side user creation requires re-authentication or Cloud Functions in production.
+                // For Polaris legacy simplicity, we attempt direct creation. 
+                // If blocked by Firebase rules, use Console → Authentication → Add User.
                 try {
-                    // Temporarily sign out, create user, sign back in as admin
-                    // This is a workaround for client-side only architecture
-                    const adminEmail = this.currentUser.email;
-                    const adminPass = prompt('Enter PsychSoc password to confirm user creation:');
-                    if (!adminPass) return;
-                    
-                    await auth.signInWithEmailAndPassword(adminEmail, adminPass);
-                    // In real Polaris, this would call a Cloud Function. 
-                    // For now, instruct user to add via Firebase Console or enable Email Link.
-                    alert('⚠️ Client-side user creation requires Cloud Functions for security.\n\nFor Polaris-style simplicity, please add new users via:\nFirebase Console → Authentication → Add User\n\nOr upgrade to Cloud Functions for in-app creation.');
+                    const secondaryApp = firebase.initializeApp(firebaseConfig, 'Secondary');
+                    await secondaryApp.auth().createUserWithEmailAndPassword(email, pass);
+                    await secondaryApp.auth().signOut();
+                    secondaryApp.delete();
+                    alert(`✅ User created: ${email}`);
+                    document.getElementById('new-user-email').value = '';
+                    document.getElementById('new-user-pass').value = '';
                 } catch(err) {
-                    alert('Failed: ' + err.message);
+                    alert('Creation failed: ' + err.message + '\n\nTip: Use Firebase Console for manual creation if client-side signup is restricted.');
                 }
             },
 
