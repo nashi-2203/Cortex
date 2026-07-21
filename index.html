@@ -213,118 +213,162 @@
         </main>
     </div>
 
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyDu9tK2f1G-_nXyCFFLhBMwOIJoWeB3ecQ",
-            authDomain: "cortex-f45ad.firebaseapp.com",
-            projectId: "cortex-f45ad",
-            storageBucket: "cortex-f45ad.firebasestorage.app",
-            messagingSenderId: "190343256759",
-            appId: "1:190343256759:web:0feb3d20ae837988920b32"
-        };
+   <script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyDu9tK2f1G-_nXyCFFLhBMwOIJoWeB3ecQ",
+        authDomain: "cortex-f45ad.firebaseapp.com",
+        projectId: "cortex-f45ad",
+        storageBucket: "cortex-f45ad.firebasestorage.app",
+        messagingSenderId: "190343256759",
+        appId: "1:190343256759:web:0feb3d20ae837988920b32"
+    };
 
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-        const storage = firebase.storage();
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
 
-        const TRASH_ICON = '<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
+    // Enable Firestore debugging - CHECK BROWSER CONSOLE FOR ERRORS
+    db.enablePersistence({ synchronizeTabs: true }).catch(err => console.warn('Persistence failed:', err));
 
-        const Cortex = {
-            currentUser: null,
-            unsubscribers: {},
-            recentItems: [],
+    const TRASH_ICON = '<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
 
-            init() {
-                this.bindLogin();
-                this.bindTheme();
-                this.bindLogout();
-                this.bindFileUpload();
-                this.checkAuthState();
-            },
+    const Cortex = {
+        currentUser: null,
+        unsubscribers: {},
+        recentItems: [],
+        allData: { projects: [], events: [], members: [], notes: [], files: [] },
 
-            bindLogin() {
-                document.getElementById('login-form').addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const email = document.getElementById('email').value.trim();
-                    const pass = document.getElementById('password').value;
-                    const errEl = document.getElementById('login-error');
-                    const btn = document.getElementById('login-btn');
-                    btn.disabled = true; btn.textContent = 'Authenticating...'; errEl.textContent = '';
-                    try { await auth.signInWithEmailAndPassword(email, pass); }
-                    catch (err) { errEl.textContent = 'Invalid credentials.'; btn.disabled = false; btn.textContent = 'Access System'; }
-                });
-            },
+        init() {
+            this.bindLogin();
+            this.bindTheme();
+            this.bindLogout();
+            this.bindFileUpload();
+            this.checkAuthState();
+        },
 
-            checkAuthState() {
-                auth.onAuthStateChanged(user => {
-                    if (user) {
-                        this.currentUser = user;
-                        document.getElementById('login-screen').style.display = 'none';
-                        document.getElementById('app-container').style.display = 'flex';
-                        this.loadAllData();
-                    } else {
-                        document.getElementById('login-screen').style.display = 'flex';
-                        document.getElementById('app-container').style.display = 'none';
-                        document.getElementById('login-btn').disabled = false;
-                        document.getElementById('login-btn').textContent = 'Access System';
-                    }
-                });
-            },
+        bindLogin() {
+            document.getElementById('login-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('email').value.trim();
+                const pass = document.getElementById('password').value;
+                const errEl = document.getElementById('login-error');
+                const btn = document.getElementById('login-btn');
+                btn.disabled = true; btn.textContent = 'Authenticating...'; errEl.textContent = '';
+                try { 
+                    await auth.signInWithEmailAndPassword(email, pass); 
+                } catch (err) { 
+                    errEl.textContent = 'Invalid credentials.'; 
+                    btn.disabled = false; 
+                    btn.textContent = 'Access System'; 
+                }
+            });
+        },
 
-            bindLogout() {
-                document.getElementById('logout-btn').addEventListener('click', () => {
-                    Object.values(this.unsubscribers).forEach(unsub => unsub());
-                    this.unsubscribers = {};
-                    this.recentItems = [];
-                    auth.signOut();
-                });
-            },
+        checkAuthState() {
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    this.currentUser = user;
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('app-container').style.display = 'flex';
+                    this.loadAllData();
+                } else {
+                    document.getElementById('login-screen').style.display = 'flex';
+                    document.getElementById('app-container').style.display = 'none';
+                    document.getElementById('login-btn').disabled = false;
+                    document.getElementById('login-btn').textContent = 'Access System';
+                    document.getElementById('password').value = '';
+                }
+            });
+        },
 
-            nav(id, tabEl) {
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                if (tabEl) tabEl.classList.add('active');
-                else document.querySelectorAll('.tab-btn').forEach(b => { if(b.textContent.toLowerCase().includes(id === 'documents' ? 'files' : id)) b.classList.add('active'); });
-                document.querySelectorAll('.module-view').forEach(el => el.classList.remove('active'));
-                document.getElementById(id)?.classList.add('active');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            },
+        bindLogout() {
+            document.getElementById('logout-btn').addEventListener('click', () => {
+                Object.values(this.unsubscribers).forEach(unsub => unsub());
+                this.unsubscribers = {};
+                this.recentItems = [];
+                this.allData = { projects: [], events: [], members: [], notes: [], files: [] };
+                auth.signOut();
+            });
+        },
 
-            bindTheme() {
-                const btn = document.getElementById('theme-btn');
-                const html = document.documentElement;
-                const saved = localStorage.getItem('cortex_theme');
-                if (saved) html.setAttribute('data-theme', saved);
-                btn.addEventListener('click', () => {
-                    const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-                    html.setAttribute('data-theme', next);
-                    localStorage.setItem('cortex_theme', next);
-                });
-            },
+        nav(id, tabEl) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            if (tabEl) tabEl.classList.add('active');
+            else document.querySelectorAll('.tab-btn').forEach(b => { 
+                if(b.textContent.toLowerCase().includes(id === 'documents' ? 'files' : id)) b.classList.add('active'); 
+            });
+            document.querySelectorAll('.module-view').forEach(el => el.classList.remove('active'));
+            document.getElementById(id)?.classList.add('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
 
-            loadAllData() {
-                this.listenCollection('projects', 'projects-list', this.renderProjects, 'sum-projects');
-                this.listenCollection('events', 'events-list', this.renderEvents, 'sum-events');
-                this.listenCollection('members', 'members-list', this.renderMembers, 'sum-members');
-                this.listenCollection('notes', 'notes-list', this.renderNotes, 'sum-notes');
-                this.listenCollection('files', 'files-list', this.renderFiles, 'sum-files');
-            },
+        bindTheme() {
+            const btn = document.getElementById('theme-btn');
+            const html = document.documentElement;
+            const saved = localStorage.getItem('cortex_theme');
+            if (saved) html.setAttribute('data-theme', saved);
+            btn.addEventListener('click', () => {
+                const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+                html.setAttribute('data-theme', next);
+                localStorage.setItem('cortex_theme', next);
+            });
+        },
 
-            // 🔥 FIXED: No orderBy clause - fetches ALL docs, sorts client-side
-            // This eliminates the need for composite indexes entirely
-            listenCollection(collectionName, containerId, renderFn, summaryId) {
-                if (this.unsubscribers[collectionName]) this.unsubscribers[collectionName]();
-                
-                const unsub = db.collection(collectionName).onSnapshot(snapshot => {
-                    const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    const sumEl = document.getElementById(summaryId);
+        loadAllData() {
+            ['projects', 'events', 'members', 'notes', 'files'].forEach(col => {
+                this.listenCollection(col);
+            });
+        },
+
+        // 🔥 HARDEST POSSIBLE QUERY: No orderBy, no where, no limit
+        listenCollection(collectionName) {
+            if (this.unsubscribers[collectionName]) this.unsubscribers[collectionName]();
+            
+            console.log(`[Cortex] Starting listener for: ${collectionName}`);
+            
+            const unsub = db.collection(collectionName).onSnapshot(
+                snapshot => {
+                    console.log(`[Cortex] ${collectionName} snapshot received: ${snapshot.size} docs`);
+                    
+                    const items = [];
+                    snapshot.forEach(doc => {
+                        items.push({ id: doc.id, ...doc.data() });
+                    });
+                    
+                    // Store raw data
+                    this.allData[collectionName] = items;
+                    
+                    // Update dashboard count
+                    const sumEl = document.getElementById(`sum-${collectionName}`);
                     if (sumEl) sumEl.textContent = items.length;
                     
-                    // Sort client-side by clientTs descending
-                    items.sort((a, b) => (b.clientTs || 0) - (a.clientTs || 0));
+                    // Sort client-side
+                    const sorted = [...items].sort((a, b) => (b.clientTs || 0) - (a.clientTs || 0));
                     
-                    renderFn(containerId, items);
-
+                    // Render to correct container
+                    const containerMap = {
+                        projects: 'projects-list',
+                        events: 'events-list', 
+                        members: 'members-list',
+                        notes: 'notes-list',
+                        files: 'files-list'
+                    };
+                    
+                    const renderMap = {
+                        projects: this.renderProjects,
+                        events: this.renderEvents,
+                        members: this.renderMembers,
+                        notes: this.renderNotes,
+                        files: this.renderFiles
+                    };
+                    
+                    const containerId = containerMap[collectionName];
+                    const renderFn = renderMap[collectionName];
+                    if (containerId && renderFn) {
+                        renderFn(containerId, sorted);
+                    }
+                    
                     // Update recent activity
                     items.forEach(item => {
                         const ts = item.clientTs || (item.ts?.toMillis?.()) || 0;
@@ -339,134 +383,144 @@
                         else this.recentItems.push(entry);
                     });
                     this.renderRecentActivity();
-                }, err => {
-                    console.error(`Firestore Error [${collectionName}]:`, err);
-                    document.getElementById(containerId).innerHTML = `<div class="empty-state" style="color:var(--danger);border-color:var(--danger);">⚠️ ${err.message}</div>`;
-                });
-                this.unsubscribers[collectionName] = unsub;
-            },
+                },
+                err => {
+                    console.error(`[Cortex] FIRESTORE ERROR [${collectionName}]:`, err.code, err.message);
+                    const containerMap = {
+                        projects: 'projects-list', events: 'events-list', 
+                        members: 'members-list', notes: 'notes-list', files: 'files-list'
+                    };
+                    const containerId = containerMap[collectionName];
+                    if (containerId) {
+                        document.getElementById(containerId).innerHTML = 
+                            `<div class="empty-state" style="color:var(--danger);border-color:var(--danger);">
+                                ⚠️ <strong>${err.code}</strong><br>${err.message}<br><br>
+                                <small>Open browser console (F12) for full error details.</small>
+                            </div>`;
+                    }
+                }
+            );
+            this.unsubscribers[collectionName] = unsub;
+        },
 
-            async deleteItem(collection, id) {
-                if (!confirm('Are you sure you want to delete this item?')) return;
+        async deleteItem(collection, id) {
+            if (!confirm('Are you sure you want to delete this item?')) return;
+            try {
+                await db.collection(collection).doc(id).delete();
+            } catch (err) {
+                alert('Failed to delete: ' + err.message);
+            }
+        },
+
+        renderRecentActivity() {
+            const el = document.getElementById('recent-activity');
+            const sorted = [...this.recentItems].sort((a,b) => b.ts - a.ts).slice(0, 8);
+            if (!sorted.length) { el.innerHTML = '<div class="empty-state">No activity yet.</div>'; return; }
+            el.innerHTML = sorted.map(i => `<div class="data-item"><div class="item-content"><h4>${this.esc(i.label)}</h4><small>${i.type.charAt(0).toUpperCase()+i.type.slice(1)} • ${new Date(i.ts).toLocaleString()}</small></div><span class="status-badge">${this.esc(i.meta)}</span></div>`).join('');
+        },
+
+        async addProject() {
+            const title = document.getElementById('proj-title').value.trim();
+            if (!title) return alert('Title required');
+            await db.collection('projects').add({ 
+                title, assignee: document.getElementById('proj-assignee').value.trim()||'Unassigned', 
+                status: document.getElementById('proj-status').value, priority: document.getElementById('proj-priority').value, 
+                createdBy: this.currentUser.email, 
+                ts: firebase.firestore.FieldValue.serverTimestamp(),
+                clientTs: Date.now()
+            });
+            document.getElementById('proj-title').value = ''; document.getElementById('proj-assignee').value = '';
+        },
+        async addEvent() {
+            const title = document.getElementById('event-title').value.trim(), date = document.getElementById('event-date').value;
+            if (!title || !date) return alert('Title and date required');
+            await db.collection('events').add({ 
+                title, date, location: document.getElementById('event-location').value.trim()||'TBD', 
+                notes: document.getElementById('event-notes').value.trim(), createdBy: this.currentUser.email, 
+                ts: firebase.firestore.FieldValue.serverTimestamp(),
+                clientTs: Date.now()
+            });
+            document.getElementById('event-title').value = ''; document.getElementById('event-date').value = ''; document.getElementById('event-location').value = ''; document.getElementById('event-notes').value = '';
+        },
+        async addMember() {
+            const name = document.getElementById('mem-name').value.trim();
+            if (!name) return alert('Name required');
+            await db.collection('members').add({ 
+                name, position: document.getElementById('mem-position').value.trim()||'Member', 
+                email: document.getElementById('mem-email').value.trim(), addedBy: this.currentUser.email, 
+                ts: firebase.firestore.FieldValue.serverTimestamp(),
+                clientTs: Date.now()
+            });
+            document.getElementById('mem-name').value = ''; document.getElementById('mem-position').value = ''; document.getElementById('mem-email').value = '';
+        },
+        async addNote() {
+            const content = document.getElementById('note-content').value.trim();
+            if (!content) return alert('Content required');
+            await db.collection('notes').add({ 
+                content, author: this.currentUser.displayName || this.currentUser.email, 
+                ts: firebase.firestore.FieldValue.serverTimestamp(),
+                clientTs: Date.now()
+            });
+            document.getElementById('note-content').value = '';
+        },
+
+        renderProjects(id, items) {
+            const el = document.getElementById(id);
+            if (!items.length) { el.innerHTML = '<div class="empty-state">No projects yet. Add one above!</div>'; return; }
+            el.innerHTML = items.map(p => `<div class="data-item"><div class="item-content"><h4>${this.esc(p.title)}</h4><small>Assignee: ${this.esc(p.assignee)} • Priority: ${this.esc(p.priority)} • By: ${this.esc(p.createdBy)}</small></div><div style="display:flex;align-items:center;gap:0.5rem;"><span class="status-badge">${this.esc(p.status)}</span><button class="btn-delete" onclick="Cortex.deleteItem('projects','${p.id}')" title="Delete">${TRASH_ICON}</button></div></div>`).join('');
+        },
+        renderEvents(id, items) {
+            const el = document.getElementById(id);
+            if (!items.length) { el.innerHTML = '<div class="empty-state">No events yet. Add one above!</div>'; return; }
+            const sorted = [...items].sort((a,b) => (a.date||'').localeCompare(b.date||''));
+            el.innerHTML = sorted.map(e => `<div class="data-item"><div class="item-content"><h4>${this.esc(e.title)}</h4><small>📅 ${this.esc(e.date)} • 📍 ${this.esc(e.location)} ${e.notes?'• 📝 '+this.esc(e.notes):''}</small></div><button class="btn-delete" onclick="Cortex.deleteItem('events','${e.id}')" title="Delete">${TRASH_ICON}</button></div>`).join('');
+        },
+        renderMembers(id, items) {
+            const el = document.getElementById(id);
+            if (!items.length) { el.innerHTML = '<div class="empty-state">No members yet. Add one above!</div>'; return; }
+            el.innerHTML = items.map(m => `<div class="data-item"><div class="item-content"><h4>${this.esc(m.name)}</h4><small>${this.esc(m.position)} ${m.email?'• '+this.esc(m.email):''}</small></div><button class="btn-delete" onclick="Cortex.deleteItem('members','${m.id}')" title="Delete">${TRASH_ICON}</button></div>`).join('');
+        },
+        renderNotes(id, items) {
+            const el = document.getElementById(id);
+            if (!items.length) { el.innerHTML = '<div class="empty-state">No notes yet. Post one above!</div>'; return; }
+            el.innerHTML = items.slice(0,50).map(n => {
+                const ts = n.clientTs || (n.ts?.toMillis?.()) || Date.now();
+                return `<div class="data-item"><div class="item-content"><h4>${this.esc(n.author)}</h4><small>${new Date(ts).toLocaleString()} • ${this.esc(n.content)}</small></div><button class="btn-delete" onclick="Cortex.deleteItem('notes','${n.id}')" title="Delete">${TRASH_ICON}</button></div>`;
+            }).join('');
+        },
+        renderFiles(id, items) {
+            const el = document.getElementById(id);
+            if (!items.length) { el.innerHTML = '<div class="empty-state">No files uploaded yet.</div>'; return; }
+            el.innerHTML = items.map(f => `<div class="data-item"><div class="item-content"><h4>📎 ${this.esc(f.name)}</h4><small>${(f.size/1024).toFixed(1)} KB • By: ${this.esc(f.by)}</small></div><div style="display:flex;align-items:center;gap:0.5rem;"><a href="${f.url}" target="_blank" style="padding:0.4rem 0.8rem;background:var(--accent);color:white;border-radius:6px;text-decoration:none;font-size:0.8rem;font-weight:600;white-space:nowrap;">Download</a><button class="btn-delete" onclick="Cortex.deleteItem('files','${f.id}')" title="Delete">${TRASH_ICON}</button></div></div>`).join('');
+        },
+
+        bindFileUpload() {
+            const zone = document.getElementById('upload-zone'), input = document.getElementById('file-input');
+            zone.addEventListener('click', () => input.click());
+            zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor = 'var(--accent)'; });
+            zone.addEventListener('dragleave', () => zone.style.borderColor = 'var(--border)');
+            zone.addEventListener('drop', e => { e.preventDefault(); zone.style.borderColor = 'var(--border)'; if(e.dataTransfer.files.length) this.upload(e.dataTransfer.files); });
+            input.addEventListener('change', () => { if(input.files.length) this.upload(input.files); input.value=''; });
+        },
+
+        async upload(files) {
+            for (const file of files) {
                 try {
-                    await db.collection(collection).doc(id).delete();
-                } catch (err) {
-                    alert('Failed to delete: ' + err.message);
-                }
-            },
+                    const ref = storage.ref(`org-files/${Date.now()}_${file.name}`);
+                    await ref.put(file);
+                    const url = await ref.getDownloadURL();
+                    await db.collection('files').add({ 
+                        name: file.name, size: file.size, url, 
+                        by: this.currentUser?.displayName || this.currentUser?.email, 
+                        ts: firebase.firestore.FieldValue.serverTimestamp(),
+                        clientTs: Date.now()
+                    });
+                } catch(err) { alert(`Upload failed: ${file.name}\n${err.message}`); }
+            }
+        },
 
-            renderRecentActivity() {
-                const el = document.getElementById('recent-activity');
-                const sorted = [...this.recentItems].sort((a,b) => b.ts - a.ts).slice(0, 8);
-                if (!sorted.length) { el.innerHTML = '<div class="empty-state">No activity yet.</div>'; return; }
-                el.innerHTML = sorted.map(i => `<div class="data-item"><div class="item-content"><h4>${this.esc(i.label)}</h4><small>${i.type.charAt(0).toUpperCase()+i.type.slice(1)} • ${new Date(i.ts).toLocaleString()}</small></div><span class="status-badge">${this.esc(i.meta)}</span></div>`).join('');
-            },
+        esc(s) { if(!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+    };
 
-            async addProject() {
-                const title = document.getElementById('proj-title').value.trim();
-                if (!title) return alert('Title required');
-                await db.collection('projects').add({ 
-                    title, assignee: document.getElementById('proj-assignee').value.trim()||'Unassigned', 
-                    status: document.getElementById('proj-status').value, priority: document.getElementById('proj-priority').value, 
-                    createdBy: this.currentUser.email, 
-                    ts: firebase.firestore.FieldValue.serverTimestamp(),
-                    clientTs: Date.now()
-                });
-                document.getElementById('proj-title').value = ''; document.getElementById('proj-assignee').value = '';
-            },
-            async addEvent() {
-                const title = document.getElementById('event-title').value.trim(), date = document.getElementById('event-date').value;
-                if (!title || !date) return alert('Title and date required');
-                await db.collection('events').add({ 
-                    title, date, location: document.getElementById('event-location').value.trim()||'TBD', 
-                    notes: document.getElementById('event-notes').value.trim(), createdBy: this.currentUser.email, 
-                    ts: firebase.firestore.FieldValue.serverTimestamp(),
-                    clientTs: Date.now()
-                });
-                document.getElementById('event-title').value = ''; document.getElementById('event-date').value = ''; document.getElementById('event-location').value = ''; document.getElementById('event-notes').value = '';
-            },
-            async addMember() {
-                const name = document.getElementById('mem-name').value.trim();
-                if (!name) return alert('Name required');
-                await db.collection('members').add({ 
-                    name, position: document.getElementById('mem-position').value.trim()||'Member', 
-                    email: document.getElementById('mem-email').value.trim(), addedBy: this.currentUser.email, 
-                    ts: firebase.firestore.FieldValue.serverTimestamp(),
-                    clientTs: Date.now()
-                });
-                document.getElementById('mem-name').value = ''; document.getElementById('mem-position').value = ''; document.getElementById('mem-email').value = '';
-            },
-            async addNote() {
-                const content = document.getElementById('note-content').value.trim();
-                if (!content) return alert('Content required');
-                await db.collection('notes').add({ 
-                    content, author: this.currentUser.displayName || this.currentUser.email, 
-                    ts: firebase.firestore.FieldValue.serverTimestamp(),
-                    clientTs: Date.now()
-                });
-                document.getElementById('note-content').value = '';
-            },
-
-            renderProjects(id, items) {
-                const el = document.getElementById(id);
-                if (!items.length) { el.innerHTML = '<div class="empty-state">No projects yet.</div>'; return; }
-                el.innerHTML = items.map(p => `<div class="data-item"><div class="item-content"><h4>${this.esc(p.title)}</h4><small>Assignee: ${this.esc(p.assignee)} • Priority: ${this.esc(p.priority)} • By: ${this.esc(p.createdBy)}</small></div><div style="display:flex;align-items:center;gap:0.5rem;"><span class="status-badge">${this.esc(p.status)}</span><button class="btn-delete" onclick="Cortex.deleteItem('projects','${p.id}')" title="Delete">${TRASH_ICON}</button></div></div>`).join('');
-            },
-            renderEvents(id, items) {
-                const el = document.getElementById(id);
-                if (!items.length) { el.innerHTML = '<div class="empty-state">No events yet.</div>'; return; }
-                // Events sort by date ascending for calendar view
-                const sorted = [...items].sort((a,b) => (a.date||'').localeCompare(b.date||''));
-                el.innerHTML = sorted.map(e => `<div class="data-item"><div class="item-content"><h4>${this.esc(e.title)}</h4><small>📅 ${this.esc(e.date)} • 📍 ${this.esc(e.location)} ${e.notes?'• 📝 '+this.esc(e.notes):''}</small></div><button class="btn-delete" onclick="Cortex.deleteItem('events','${e.id}')" title="Delete">${TRASH_ICON}</button></div>`).join('');
-            },
-            renderMembers(id, items) {
-                const el = document.getElementById(id);
-                if (!items.length) { el.innerHTML = '<div class="empty-state">No members yet.</div>'; return; }
-                el.innerHTML = items.map(m => `<div class="data-item"><div class="item-content"><h4>${this.esc(m.name)}</h4><small>${this.esc(m.position)} ${m.email?'• '+this.esc(m.email):''}</small></div><button class="btn-delete" onclick="Cortex.deleteItem('members','${m.id}')" title="Delete">${TRASH_ICON}</button></div>`).join('');
-            },
-            renderNotes(id, items) {
-                const el = document.getElementById(id);
-                if (!items.length) { el.innerHTML = '<div class="empty-state">No notes yet.</div>'; return; }
-                el.innerHTML = items.slice(0,50).map(n => {
-                    const ts = n.clientTs || (n.ts?.toMillis?.()) || Date.now();
-                    return `<div class="data-item"><div class="item-content"><h4>${this.esc(n.author)}</h4><small>${new Date(ts).toLocaleString()} • ${this.esc(n.content)}</small></div><button class="btn-delete" onclick="Cortex.deleteItem('notes','${n.id}')" title="Delete">${TRASH_ICON}</button></div>`;
-                }).join('');
-            },
-            renderFiles(id, items) {
-                const el = document.getElementById(id);
-                if (!items.length) { el.innerHTML = '<div class="empty-state">No files yet.</div>'; return; }
-                el.innerHTML = items.map(f => `<div class="data-item"><div class="item-content"><h4>📎 ${this.esc(f.name)}</h4><small>${(f.size/1024).toFixed(1)} KB • By: ${this.esc(f.by)}</small></div><div style="display:flex;align-items:center;gap:0.5rem;"><a href="${f.url}" target="_blank" style="padding:0.4rem 0.8rem;background:var(--accent);color:white;border-radius:6px;text-decoration:none;font-size:0.8rem;font-weight:600;white-space:nowrap;">Download</a><button class="btn-delete" onclick="Cortex.deleteItem('files','${f.id}')" title="Delete">${TRASH_ICON}</button></div></div>`).join('');
-            },
-
-            bindFileUpload() {
-                const zone = document.getElementById('upload-zone'), input = document.getElementById('file-input');
-                zone.addEventListener('click', () => input.click());
-                zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor = 'var(--accent)'; });
-                zone.addEventListener('dragleave', () => zone.style.borderColor = 'var(--border)');
-                zone.addEventListener('drop', e => { e.preventDefault(); zone.style.borderColor = 'var(--border)'; if(e.dataTransfer.files.length) this.upload(e.dataTransfer.files); });
-                input.addEventListener('change', () => { if(input.files.length) this.upload(input.files); input.value=''; });
-            },
-
-            async upload(files) {
-                for (const file of files) {
-                    try {
-                        const ref = storage.ref(`org-files/${Date.now()}_${file.name}`);
-                        await ref.put(file);
-                        const url = await ref.getDownloadURL();
-                        await db.collection('files').add({ 
-                            name: file.name, size: file.size, url, 
-                            by: this.currentUser?.displayName || this.currentUser?.email, 
-                            ts: firebase.firestore.FieldValue.serverTimestamp(),
-                            clientTs: Date.now()
-                        });
-                    } catch(err) { alert(`Upload failed: ${file.name}\n${err.message}`); }
-                }
-            },
-
-            esc(s) { if(!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
-        };
-
-        document.addEventListener('DOMContentLoaded', () => Cortex.init());
-    </script>
-</body>
-</html>
+    document.addEventListener('DOMContentLoaded', () => Cortex.init());
+</script>
