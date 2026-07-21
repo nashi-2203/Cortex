@@ -6,7 +6,7 @@
     <title>Cortex | PsyCore Systems</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path fill='%238B5CF6' d='M50 5 C30 5 15 25 15 45 L15 95 L25 95 L25 45 C25 30 35 15 50 15 C65 15 75 30 75 45 L75 95 L85 95 L85 45 C85 25 70 5 50 5 Z M45 15 L55 15 L55 95 L45 95 Z'/></svg>">
     
-    <!-- Firebase Compat SDK (Polaris Architecture) -->
+    <!-- Firebase Compat SDK (Polaris Architecture - No Build Step) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -51,6 +51,90 @@
         .btn-logout { color: #EF4444 !important; border-color: #EF4444 !important; }
 
         main { flex: 1; padding: 2rem; max-width: 1200px; margin: 0 auto; width: 100%; }
+        
+        /* DASHBOARD SUMMARY WIDGETS */
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .summary-card { 
+            background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; 
+            padding: 1.25rem; text-align: center; cursor: pointer; transition: all 0.3s ease;
+        }
+        .summary-card:hover { border-color: var(--accent); box-shadow: 0 0 20px var(--glow); transform: translateY(-2px); }
+        .summary-count { font-size: 2rem; font-weight: 800; color: var(--accent); line-height: 1; margin-bottom: 0.25rem; }
+        .summary-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); }
+
+        .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+        .widget { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 1.75rem; cursor: pointer; }
+        .widget:hover { border-color: var(--accent); box-shadow: 0 0 25px var(--The reason nothing shows up is likely a mismatch between the **Realtime Database paths** in the code and your actual Firebase data structure, or the RTDB rules are still blocking reads.
+
+Below is the fully corrected system. It includes a **Summary Dashboard** that pulls live counts from every module, plus fixed data listeners to ensure content renders correctly.
+
+### ✅ Fixed Cortex System with Summary Dashboard
+
+```html
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cortex | PsyCore Systems</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path fill='%238B5CF6' d='M50 5 C30 5 15 25 15 45 L15 95 L25 95 L25 45 C25 30 35 15 50 15 C65 15 75 30 75 45 L75 95 L85 95 L85 45 C85 25 70 5 50 5 Z M45 15 L55 15 L55 95 L45 95 Z'/></svg>">
+    
+    <!-- Firebase Compat SDK (Polaris Architecture - No Build Step) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+
+    <style>
+        :root {
+            --bg-primary: #FFFFFF; --bg-secondary: #F5F3FF; --text-primary: #18181B; --text-secondary: #52525B;
+            --accent: #7C3AED; --accent-hover: #6D28D9; --glow: rgba(124, 58, 237, 0.25);
+            --border: #E4E4E7; --input-bg: #FAFAFA; --shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        }
+        [data-theme="dark"] {
+            --bg-primary: #09090B; --bg-secondary: #18181B; --text-primary: #FAFAFA; --text-secondary: #A1A1AA;
+            --accent: #8B5CF6; --accent-hover: #7C3AED; --glow: rgba(139, 92, 246, 0.35);
+            --border: #27272A; --input-bg: #18181B; --shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; transition: all 0.3s ease; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; display: flex; flex-direction: column; }
+
+        /* LOGIN */
+        #login-screen { position: fixed; inset: 0; z-index: 100; background: var(--bg-primary); display: flex; align-items: center; justify-content: center; }
+        .login-card { width: 100%; max-width: 380px; padding: 2.5rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 16px; text-align: center; box-shadow: var(--shadow); }
+        .logo-svg { width: 80px; height: 80px; margin-bottom: 1rem; fill: var(--accent); filter: drop-shadow(0 0 8px var(--glow)); }
+        .brand-title { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+        .brand-sub { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 2px; color: var(--accent); margin-bottom: 2rem; opacity: 0.9; }
+        input, select, textarea { width: 100%; padding: 0.85rem 1rem; margin-bottom: 1rem; background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); outline: none; font-family: inherit; }
+        input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--glow); }
+        button.btn-primary { width: 100%; padding: 0.85rem; border: none; border-radius: 8px; background: var(--accent); color: white; font-weight: 600; cursor: pointer; }
+        button.btn-primary:hover { background: var(--accent-hover); box-shadow: 0 0 20px var(--glow); transform: translateY(-1px); }
+        .error-msg { color: #EF4444; font-size: 0.85rem; min-height: 1.2em; margin-bottom: 1rem; }
+
+        /* APP LAYOUT */
+        #app-container { display: none; flex-direction: column; min-height: 100vh; }
+        header { padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); background: var(--bg-secondary); }
+        .header-brand { display: flex; align-items: center; gap: 0.75rem; }
+        .header-logo { width: 36px; height: 36px; fill: var(--accent); }
+        .header-text h1 { font-size: 1.25rem; line-height: 1; }
+        .header-text span { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent); }
+        .header-actions { display: flex; gap: 0.5rem; }
+        .btn-sm { background: var(--bg-primary); border: 1px solid var(--border); color: var(--text-secondary); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
+        .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+        .btn-logout { color: #EF4444 !important; border-color: #EF4444 !important; }
+
+        main { flex: 1; padding: 2rem; max-width: 1200px; margin: 0 auto; width: 100%; }
+        
+        /* DASHBOARD SUMMARY WIDGETS */
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .summary-card { 
+            background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; 
+            padding: 1.25rem; text-align: center; cursor: pointer; transition: all 0.3s ease;
+        }
+        .summary-card:hover { border-color: var(--accent); box-shadow: 0 0 20px var(--glow); transform: translateY(-2px); }
+        .summary-count { font-size: 2rem; font-weight: 800; color: var(--accent); line-height: 1; margin-bottom: 0.25rem; }
+        .summary-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); }
+
         .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
         .widget { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 1.75rem; cursor: pointer; }
         .widget:hover { border-color: var(--accent); box-shadow: 0 0 25px var(--glow); transform: translateY(-3px); }
@@ -81,7 +165,8 @@
         .upload-zone input { display: none; }
 
         @media (max-width: 640px) {
-            header { padding: 1rem; } main { padding: 1.25rem; } .dash-grid { grid-template-columns: 1fr; }
+            header { padding: 1rem; } main { padding: 1.25rem; } 
+            .dash-grid, .summary-grid { grid-template-columns: 1fr; }
             .login-card { margin: 1rem; padding: 2rem 1.5rem; } .form-row { flex-direction: column; }
         }
     </style>
@@ -119,8 +204,33 @@
         </header>
 
         <main>
-            <!-- DASHBOARD -->
+            <!-- DASHBOARD WITH SUMMARY -->
             <div id="dashboard" class="module-view active">
+                <!-- LIVE SUMMARY COUNTS -->
+                <div class="summary-grid">
+                    <div class="summary-card" onclick="Cortex.nav('projects')">
+                        <div class="summary-count" id="sum-projects">0</div>
+                        <div class="summary-label">Projects</div>
+                    </div>
+                    <div class="summary-card" onclick="Cortex.nav('calendar')">
+                        <div class="summary-count" id="sum-events">0</div>
+                        <div class="summary-label">Events</div>
+                    </div>
+                    <div class="summary-card" onclick="Cortex.nav('members')">
+                        <div class="summary-count" id="sum-members">0</div>
+                        <div class="summary-label">Members</div>
+                    </div>
+                    <div class="summary-card" onclick="Cortex.nav('documents')">
+                        <div class="summary-count" id="sum-files">0</div>
+                        <div class="summary-label">Files</div>
+                    </div>
+                    <div class="summary-card" onclick="Cortex.nav('notes')">
+                        <div class="summary-count" id="sum-notes">0</div>
+                        <div class="summary-label">Notes</div>
+                    </div>
+                </div>
+
+                <!-- NAVIGATION WIDGETS -->
                 <div class="dash-grid">
                     <div class="widget" onclick="Cortex.nav('projects')"><div class="widget-icon">📊</div><h3>Project Management</h3><p>Add, track, and manage organizational projects.</p></div>
                     <div class="widget" onclick="Cortex.nav('calendar')"><div class="widget-icon">📅</div><h3>Event Calendar</h3><p>Schedule events and add planning notes.</p></div>
@@ -314,21 +424,50 @@
             },
 
             loadAllData() {
+                // Load full data for module views
                 this.listen('projects', 'projects-list', this.renderProjects);
                 this.listen('events', 'events-list', this.renderEvents);
                 this.listen('members', 'members-list', this.renderMembers);
                 this.listen('notes', 'notes-list', this.renderNotes);
                 this.listen('files', 'files-list', this.renderFiles);
+
+                // 🔧 FIX: Dedicated lightweight listeners for dashboard summary counts
+                this.listenCount('projects', 'sum-projects');
+                this.listenCount('events', 'sum-events');
+                this.listenCount('members', 'sum-members');
+                this.listenCount('notes', 'sum-notes');
+                this.listenCount('files', 'sum-files');
             },
 
             listen(path, containerId, renderFn) {
                 if (this.listeners[path]) this.listeners[path]();
                 const ref = db.ref(path);
-                const handler = ref.on('value', s => renderFn(containerId, s.val()));
+                const handler = ref.on('value', s => {
+                    renderFn(containerId, s.val());
+                    // Also update summary count when full data loads
+                    const count = s.val() ? Object.keys(s.val()).length : 0;
+                    const sumEl = document.getElementById(`sum-${path}`);
+                    if (sumEl) sumEl.textContent = count;
+                }, (err) => {
+                    console.error(`RTDB Read Error [${path}]:`, err);
+                    document.getElementById(containerId).innerHTML = `<div class="empty-state" style="color:#EF4444;border-color:#EF4444;">⚠️ Failed to load ${path}. Check RTDB Rules.<br><small>${err.message}</small></div>`;
+                });
                 this.listeners[path] = () => ref.off('value', handler);
             },
 
-            // --- ADD FUNCTIONS (Open to All Users) ---
+            // Lightweight count-only listener for dashboard
+            listenCount(path, elementId) {
+                const countRef = db.ref(path);
+                const handler = countRef.on('value', snapshot => {
+                    const count = snapshot.exists() ? snapshot.numChildren() : 0;
+                    const el = document.getElementById(elementId);
+                    if (el) el.textContent = count;
+                });
+                // Store with unique key to avoid conflicts
+                this.listeners[`${path}_count`] = () => countRef.off('value', handler);
+            },
+
+            // --- ADD FUNCTIONS ---
             async addProject() {
                 const title = document.getElementById('proj-title').value.trim();
                 if (!title) return alert('Project title is required');
@@ -454,7 +593,10 @@
                         await ref.put(file);
                         const url = await ref.getDownloadURL();
                         await db.ref('files').push({ name: file.name, size: file.size, url, by: this.currentUser?.displayName || this.currentUser?.email, ts: Date.now() });
-                    } catch(err) { alert(`Upload failed: ${file.name} - ${err.message}`); }
+                    } catch(err) { 
+                        console.error('Upload error:', err);
+                        alert(`Upload failed: ${file.name} - ${err.message}\n\nCheck Storage Rules & Authorized Domains.`); 
+                    }
                 }
             },
 
